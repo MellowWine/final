@@ -1,156 +1,93 @@
-@import './base.css';
+/* src/assets/main.css */
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
+/* 1. 根据您的配色方案，定义全新的CSS颜色变量 */
+:root {
+  /* 主色调 */
+  --color-primary-pink: #F8C3CD;   /* 浅樱花粉 (按钮, 重点高亮) */
+  --color-primary-blue: #A8C0CE;   /* 雾霾蓝 (导航栏背景 - 备用) */
+  
+  /* 辅助色 */
+  --color-card-bg: #F9D5E5;        /* 香草冰淇淋粉 (卡片背景) */
+  --color-input-bg: #F3E1E1;       /* 香草冰淇淋粉 (输入框底色) */
+  --color-page-bg-subtle: #E0EBF5; /* 灰调浅蓝 (次级背景) */
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
+  /* 点缀色 */
+  --color-accent-coral: #F4A4B2;     /* 珊瑚粉 (悬浮/重要提示) */
+  --color-accent-pearl: #AEC6CF;     /* 珍珠蓝 (边框) */
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
-}
-/* src/assets/main.css (添加在末尾) */
-
-/* --- 导航栏样式 --- */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 2rem;
-  height: 60px;
-  background-color: #2c3e50;
-  color: white;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-}
-.nav-left {
-  display: flex;
-  align-items: center;
-}
-.nav-brand {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-right: 2rem;
-}
-.nav-links a, .auth-links a, .nav-brand {
-  color: white;
-  text-decoration: none;
-  padding: 0 1rem;
-  transition: color 0.3s;
-}
-.nav-links a:hover, .auth-links a:hover, .nav-brand:hover {
-  color: #42b983;
-}
-.router-link-exact-active {
-  color: #42b983 !important;
-  font-weight: bold;
-}
-.nav-right {
-  position: relative;
-}
-.user-menu {
-  cursor: pointer;
-  position: relative;
-}
-.user-menu .username {
-  padding: 0 1rem;
-  font-weight: bold;
-}
-.user-menu .dropdown {
-  display: none;
-  position: absolute;
-  right: 0;
-  top: 100%;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  min-width: 120px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-.user-menu:hover .dropdown {
-  display: block;
-}
-.dropdown a {
-  display: block;
-  padding: 0.75rem 1rem;
-  color: #333;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.dropdown a:hover {
-  background-color: #f5f5f5;
-  color: #2c3e50;
+  /* 中性色 */
+  --color-text: #6D6875;             /* 浅灰紫 (正文文字) */
+  --color-background: #FAF9F6;      /* 米白背景 (全局背景) */
+  
+  /* 渐变色定义 (用于导航栏) */
+  --gradient-navbar: linear-gradient(to right, #F8C3CD, #D6E3F0);
 }
 
+/* 2. 应用全局样式 */
+body {
+  min-height: 100vh;
+  background-color: var(--color-background); /* 应用米白背景 */
+  color: var(--color-text);                   /* 应用浅灰紫作为默认文字颜色 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  transition: color 0.5s, background-color 0.5s;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* --- 登录/注册表单样式 --- */
+/* --- 3. 更新登录/注册表单样式以匹配新主题 --- */
 .auth-container {
   max-width: 400px;
-  margin: 2rem auto;
-  padding: 2rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin: 4rem auto 2rem;
+  padding: 2.5rem;
+  background-color: rgba(255, 255, 255, 0.8); /* 半透明白色，透出米白底色 */
+  border: 1px solid var(--color-accent-pearl); /* 珍珠蓝边框 */
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(174, 198, 207, 0.2); /* 珍珠蓝的柔和阴影 */
 }
 .auth-container h2 {
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: #2c3e50;
+  margin-bottom: 2rem;
+  color: var(--color-text);
+  font-weight: 600;
 }
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
+  color: var(--color-text);
 }
 .form-group input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-accent-pearl); /* 珍珠蓝边框 */
+  border-radius: 8px;
   box-sizing: border-box;
+  background-color: var(--color-input-bg); /* 香草冰淇淋粉作为输入框底色 */
+  color: var(--color-text);
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary-pink);
+  box-shadow: 0 0 0 3px rgba(248, 195, 205, 0.5);
 }
 button[type="submit"] {
   width: 100%;
-  padding: 0.75rem;
-  background-color: #42b983;
-  color: white;
+  padding: 0.8rem;
+  background-color: var(--color-primary-pink); /* 浅樱花粉按钮 */
+  color: #fff; /* 白色文字在粉色按钮上更清晰 */
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 1rem;
+  font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, transform 0.2s;
 }
 button[type="submit"]:hover {
-  background-color: #36a46f;
+  background-color: var(--color-accent-coral); /* 悬停时变为珊瑚粉 */
+  transform: translateY(-2px); /* 轻微上浮效果 */
 }
 .error {
   color: #e74c3c;
@@ -158,7 +95,7 @@ button[type="submit"]:hover {
   margin-top: 1rem;
 }
 .success {
-  color: #2ecc71;
+  color: #27ae60;
   text-align: center;
   margin-top: 1rem;
 }
