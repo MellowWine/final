@@ -1,6 +1,5 @@
 <template>
     <nav class="navbar">
-        <!-- ... (模板部分保持不变) ... -->
         <div class="nav-left">
             <RouterLink to="/" class="nav-brand">
                 <div class="brand-title">糖罐日记</div>
@@ -11,12 +10,13 @@
                 <RouterLink to="/">💖 首页 💖</RouterLink>
                 <RouterLink to="/forum">日记簿</RouterLink>
                 <RouterLink to="/gacha">每日一抽</RouterLink>
-                <RouterLink to="/store">积分商城</RouterLink>
+                <!-- !!修改点: 已删除指向 /store 的链接 -->
             </div>
         </div>
 
         <div class="nav-right">
-            <div v-if="userStore.isLoggedIn" class="user-menu">
+            <!-- !!修复点: 使用更严谨的 v-if 条件 -->
+            <div v-if="userStore.isLoggedIn && userStore.user" class="user-menu">
                 <span class="username">{{ userStore.username }}</span>
                 <div class="dropdown">
                     <RouterLink to="/profile">个人空间</RouterLink>
@@ -41,7 +41,7 @@ function handleLogout() {
 </script>
 
 <style scoped>
-/* ... (大部分样式保持不变) ... */
+/* ... (所有样式保持不变) ... */
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -131,11 +131,8 @@ function handleLogout() {
     border: 1px solid var(--color-accent-pearl);
     border-radius: 8px;
     min-width: 120px;
-    /* !!修改点: 移除这个制造空隙的 margin-top */
-    /* margin-top: 5px; */
     box-shadow: 0 4px 15px rgba(174, 198, 207, 0.2);
     overflow: hidden;
-    /* !!新增: 可以用一个轻微的 padding-top 来创造视觉上的间距，而不会产生交互空隙 */
     padding-top: 5px;
 }
 
