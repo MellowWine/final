@@ -56,6 +56,18 @@ let db;
                 UNIQUE (diary_id, user_id)
             )
         `);
+        
+        // !!新增: 4. 每日一抽记录表
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS gacha_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                prize_name TEXT NOT NULL,
+                drawn_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+        `);
+
         console.log('✅ All tables are ready.');
     } catch (error) {
         console.error('❌ Failed to initialize the database', error);
@@ -171,6 +183,74 @@ app.post('/api/diaries/:id/like', verifyToken, async (req, res) => {
         res.status(200).json({ message: '操作成功' });
     } catch (error) {
         res.status(500).json({ message: '操作失败', error: error.message });
+    }
+});
+
+
+// !!新增: 每日一抽 API ---
+
+// 奖品池
+const PRIZE_POOL = [
+    "一个甜甜的早安吻",
+    "一张“听你的”券",
+    "一张“免做家务”卡",
+    "下次约会你来定地点",
+    "亲手制作的小甜点一份",
+    "一个大大的拥抱",
+    "今晚陪你看一部电影",
+    "承包你一天的奶茶",
+    "说十句情话给你听",
+    "谢谢参与，明天再来~"
+];
+
+// 检查今天是否能抽奖
+app.get('/api/gacha/status', verifyToken, async (req, res) => {
+    try {
+        // 使用 DATE() 函数只比较日期，'localtime' 修正时区
+        const lastDraw = await db.get(
+            "SELECT 1 FROM gacha_history WHERE user_id = ? AND DATE(drawn_at, 'localtime') = DATE('now', 'localtime')",
+            [req.user.id]
+        );
+        res.json({ canDraw: !lastDraw });
+    } catch (error) {
+        res.status(500).json({ message: '查询抽奖状态失败', error: error.message });
+    }
+});
+
+// 执行抽奖
+app.post('/api/gacha/draw', verifyToken, async (req, res) => {
+    const userId = req.user.id;
+    try {
+        const lastDraw = await db.get(
+            "SELECT 1 FROM gacha_history WHERE user_id = ? AND DATE(drawn_at, 'localtime') = DATE('now', 'localtime')",
+            [userId]
+        );
+        if (lastDraw) {
+            return res.status(403).json({ message: '您今天已经抽过奖了，明天再来吧！' });
+        }
+
+        const prize = PRIZE_POOL[Math.floor(Math.random() * PRIZE_POOL.length)];
+        await db.run(
+            'INSERT INTO gacha_history (user_id, prize_name) VALUES (?, ?)',
+            [userId, prize]
+        );
+        res.status(201).json({ message: '恭喜！', prize });
+
+    } catch (error) {
+        res.status(500).json({ message: '抽奖失败', error: error.message });
+    }
+});
+
+// 获取抽奖历史
+app.get('/api/gacha/history', verifyToken, async (req, res) => {
+    try {
+        const history = await db.all(
+            'SELECT prize_name, drawn_at FROM gacha_history WHERE user_id = ? ORDER BY drawn_at DESC',
+            [req.user.id]
+        );
+        res.json(history);
+    } catch (error) {
+        res.status(500).json({ message: '获取历史记录失败', error: error.message });
     }
 });
 
