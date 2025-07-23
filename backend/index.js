@@ -11,100 +11,58 @@ const app = express();
 const PORT = 3001;
 const JWT_SECRET = 'your-super-secret-key-change-it';
 
+// --- 全局中间件 ---
 app.use(cors());
 app.use(express.json());
 
 let db;
 
+// --- 数据库初始化 (只执行一次) ---
 (async () => {
     try {
-        db = await open({
-            filename: './database.db',
-            driver: sqlite3.Database
-        });
+        db = await open({ filename: './database.db', driver: sqlite3.Database });
         console.log('✅ Database connected.');
 
-        await db.exec(`
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                completed BOOLEAN NOT NULL DEFAULT 0
-            )
-        `);
-
+        // 1. 用户表
         await db.exec(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                /* !!修改点: 将这里的默认日期改为您指定的日期 */
-                love_start_date TEXT DEFAULT '2020-01-26' 
+                love_start_date TEXT DEFAULT '2020-01-26'
             )
         `);
-        console.log('✅ Tables are ready.');
+        
+        // 2. 日记表
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS diaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        `);
+
+        // 3. 打心记录表
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS likes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                diary_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+                FOREIGN KEY (diary_id) REFERENCES diaries (id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                UNIQUE (diary_id, user_id)
+            )
+        `);
+        console.log('✅ All tables are ready.');
     } catch (error) {
         console.error('❌ Failed to initialize the database', error);
     }
 })();
 
-
-// --- 用户认证 API (保持不变) ---
-// ... (注册, 登录, verifyToken, /api/me 路由都保持原样) ...
-
-// 注册
-app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: '用户名和密码不能为空' });
-    }
-    try {
-        const existingUser = await db.get('SELECT * FROM users WHERE username = ?', username);
-        if (existingUser) {
-            return res.status(409).json({ message: '用户名已存在' });
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await db.run('INSERT INTO users (username, password) VALUES (?, ?)', username, hashedPassword);
-        res.status(201).json({ message: '注册成功' });
-    } catch (error) {
-        res.status(500).json({ message: '服务器错误', error: error.message });
-    }
-});
-
-// 登录
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: '用户名和密码不能为空' });
-    }
-    try {
-        const user = await db.get('SELECT * FROM users WHERE username = ?', username);
-        if (!user) {
-            return res.status(401).json({ message: '用户名或密码错误' });
-        }
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: '用户名或密码错误' });
-        }
-        const token = jwt.sign(
-            { id: user.id, username: user.username, love_start_date: user.love_start_date },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-        res.json({
-            message: '登录成功',
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-                love_start_date: user.love_start_date
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ message: '服务器错误', error: error.message });
-    }
-});
-
-// 中间件，用于验证 Token
+// --- Token 验证中间件 ---
 const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -116,7 +74,46 @@ const verifyToken = (req, res, next) => {
     });
 };
 
-// “获取我的信息”的 API 路由
+
+// ===================================
+//         API 路由定义
+// ===================================
+
+
+// --- 用户认证 API ---
+
+// 注册
+app.post('/api/register', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: '用户名和密码不能为空' });
+    try {
+        const existingUser = await db.get('SELECT * FROM users WHERE username = ?', username);
+        if (existingUser) return res.status(409).json({ message: '用户名已存在' });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.run('INSERT INTO users (username, password) VALUES (?, ?)', username, hashedPassword);
+        res.status(201).json({ message: '注册成功' });
+    } catch (error) {
+        res.status(500).json({ message: '服务器错误', error: error.message });
+    }
+});
+
+// 登录
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: '用户名和密码不能为空' });
+    try {
+        const user = await db.get('SELECT * FROM users WHERE username = ?', username);
+        if (!user) return res.status(401).json({ message: '用户名或密码错误' });
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) return res.status(401).json({ message: '用户名或密码错误' });
+        const token = jwt.sign({ id: user.id, username: user.username, love_start_date: user.love_start_date }, JWT_SECRET, { expiresIn: '1h' });
+        res.json({ message: '登录成功', token, user: { id: user.id, username: user.username, love_start_date: user.love_start_date } });
+    } catch (error) {
+        res.status(500).json({ message: '服务器错误', error: error.message });
+    }
+});
+
+// 获取当前登录用户信息
 app.get('/api/me', verifyToken, (req, res) => {
     res.json({
         id: req.user.id,
@@ -126,7 +123,59 @@ app.get('/api/me', verifyToken, (req, res) => {
 });
 
 
-// 启动服务器
+// --- 日记本 API ---
+
+// 获取所有日记
+app.get('/api/diaries', verifyToken, async (req, res) => {
+    const currentUserId = req.user.id;
+    const query = `
+        SELECT
+            d.id, d.content, d.created_at, d.user_id,
+            u.username,
+            (SELECT SUM(rating) FROM likes WHERE diary_id = d.id) AS total_hearts,
+            (SELECT rating FROM likes WHERE diary_id = d.id AND user_id = ?) AS my_rating
+        FROM diaries d
+        JOIN users u ON d.user_id = u.id
+        ORDER BY d.created_at DESC;
+    `;
+    try {
+        const diaries = await db.all(query, [currentUserId]);
+        res.json(diaries);
+    } catch (error) {
+        res.status(500).json({ message: '获取日记失败', error: error.message });
+    }
+});
+
+// 发布新日记
+app.post('/api/diaries', verifyToken, async (req, res) => {
+    const { content } = req.body;
+    if (!content || content.trim() === '') return res.status(400).json({ message: '日记内容不能为空' });
+    try {
+        const result = await db.run('INSERT INTO diaries (content, user_id) VALUES (?, ?)', [content, req.user.id]);
+        res.status(201).json({ message: '发布成功', diaryId: result.lastID });
+    } catch (error) {
+        res.status(500).json({ message: '发布失败', error: error.message });
+    }
+});
+
+// 给日记打心
+app.post('/api/diaries/:id/like', verifyToken, async (req, res) => {
+    const diaryId = req.params.id;
+    const { rating } = req.body;
+    if (!rating || rating < 1 || rating > 5) return res.status(400).json({ message: '评级必须在1-5之间' });
+    try {
+        const diary = await db.get('SELECT user_id FROM diaries WHERE id = ?', diaryId);
+        if (!diary) return res.status(404).json({ message: '日记不存在' });
+        if (diary.user_id === req.user.id) return res.status(403).json({ message: '不能给自己的日记打心' });
+        await db.run('INSERT OR REPLACE INTO likes (diary_id, user_id, rating) VALUES (?, ?, ?)', [diaryId, req.user.id, rating]);
+        res.status(200).json({ message: '操作成功' });
+    } catch (error) {
+        res.status(500).json({ message: '操作失败', error: error.message });
+    }
+});
+
+
+// --- 启动服务器 ---
 app.listen(PORT, () => {
-    console.log(`✅ Backend server is running at http://localhost:${PORT}`);
+    console.log(`✅ Server is running at http://localhost:${PORT}`);
 });
